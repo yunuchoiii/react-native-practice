@@ -1,7 +1,7 @@
 import theme from "@/theme/theme";
 import { CategoryItem } from "@/types/category";
 import { Button, FormControl, KeyboardAvoidingView, Modal } from "native-base";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Alert, Platform, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 type CategoryFormModalProps = {
@@ -21,22 +21,29 @@ const CategoryFormModal = ({
   category,
   setCategory,
 }: CategoryFormModalProps) => {
-  const [categoryName, setCategoryName] = useState("");
   const [categoryColor, setCategoryColor] = useState("");
-
-  const onChangeText = (value: string) => {
-    setCategoryName(value);
-  }
+  const inputRef = useRef<TextInput | null>(null);
+  const textValueRef = useRef<string>(""); // 입력값을 저장할 ref
 
   useEffect(() => {
     if (category) {
-      setCategoryName(category.name);
+      textValueRef.current = category.name; // 초기 값 설정
       setCategoryColor(category.color);
     } else {
-      setCategoryName("");
+      textValueRef.current = "";
       setCategoryColor("");
     }
   }, [category]);
+
+  // 사용자가 입력하는 동안 상태를 업데이트하지 않고 ref에 저장
+  const onChangeText = (value: string) => {
+    textValueRef.current = value;
+  };
+
+  // 포커스 아웃 시 상태 업데이트 (불필요한 리렌더링 방지)
+  const onBlur = () => {
+    console.log("입력 종료:", textValueRef.current);
+  };
 
   const addCategory = ({ name, color }: { name: string; color: string }) => {
     setCategoryList([...categoryList, { id: new Date().getTime().toString(), name, color }]);
@@ -47,7 +54,9 @@ const CategoryFormModal = ({
   };
 
   const onSave = () => {
-    if (!categoryName.trim() || !categoryColor) {
+    const categoryName = textValueRef.current.trim();
+
+    if (!categoryName || !categoryColor) {
       Alert.alert("입력 오류", "카테고리 이름과 색상을 선택해주세요.");
       return;
     }
@@ -59,7 +68,7 @@ const CategoryFormModal = ({
     }
 
     setCategory(null);
-    setCategoryName("");
+    textValueRef.current = ""; // 입력값 초기화
     setCategoryColor("");
     setIsModalVisible(false);
   };
@@ -79,10 +88,12 @@ const CategoryFormModal = ({
           <Modal.Body>
             <FormControl>
               <FormControl.Label>이름</FormControl.Label>
-              <TextInput 
-                value={categoryName} 
-                onChangeText={onChangeText} 
-                placeholder="카테고리 이름 입력" 
+              <TextInput
+                ref={inputRef}
+                defaultValue={textValueRef.current} // 초기값 설정
+                onChangeText={onChangeText} // 입력 중에는 ref에 저장
+                onBlur={onBlur} // 포커스가 해제될 때 로그 출력 (여기서도 상태 업데이트 가능)
+                placeholder="카테고리 이름 입력"
                 style={styles.input}
               />
             </FormControl>
